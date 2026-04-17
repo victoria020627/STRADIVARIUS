@@ -1,0 +1,14 @@
+body {
+  background-image: url(../paginas/index.html.html);
+  background-color: #ffffcc;
+}
+a {
+  background-color: #ffccff;
+  color: #~f229c3
+  padding:17px;
+  border-radius:20px;
+  text-decoration:none;
+}
+a:hover {
+	color:yellow;
+}
