@@ -1,0 +1,74 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare site
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p _site
+
+          # Copiar las páginas a la raíz del sitio publicado
+          cp -r paginas/. _site/
+
+          # Copiar assets si existen
+          [ -d css ] && cp -r css _site/css
+          [ -d js ] && cp -r js _site/js
+          [ -d img ] && cp -r img _site/img
+
+          # Evitar procesado Jekyll
+          touch _site/.nojekyll
+
+          # Reescribir rutas para que funcionen ya en la raíz publicada
+          find _site -type f -name "*.html" -print0 | while IFS= read -r -d '' file; do
+            sed -E -i \
+              -e 's#href="\.\./css/#href="css/#g' \
+              -e 's#src="\.\./css/#src="css/#g' \
+              -e 's#href="\.\./js/#href="js/#g' \
+              -e 's#src="\.\./js/#src="js/#g' \
+              -e 's#href="\.\./img/#href="img/#g' \
+              -e 's#src="\.\./img/#src="img/#g' \
+              -e 's#href="file:///[^"]*/paginas/([^"/]+\.html)"#href="\1"#g' \
+              "$file"
+          done
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
